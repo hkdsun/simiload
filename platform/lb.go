@@ -19,7 +19,7 @@ import (
 type LB struct {
 	WorkerGroup    *WorkerGroup
 	Port           uint
-	LoadController LoadController
+	LoadRegulator LoadRegulator
 	LoggingDelay   time.Duration
 
 	logQueue ReqQueue
@@ -43,7 +43,7 @@ func (lb *LB) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		request.ShopId = shopId
 	}
 
-	if !lb.LoadController.AllowAccess(request) {
+	if !lb.LoadRegulator.AllowAccess(request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 		return
 	}
@@ -83,7 +83,7 @@ func (lb *LB) startRequestLogger(logQueue ReqQueue) *sync.WaitGroup {
 			if !ok {
 				break
 			}
-			lb.LoadController.LogAccess(request)
+			lb.LoadRegulator.LogAccess(request)
 		}
 	}()
 

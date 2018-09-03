@@ -1,27 +1,62 @@
 package platform
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
-type LoadController interface {
+type LoadRegulator interface {
 	AllowAccess(req *HttpRequest) bool
 	LogAccess(req *HttpRequest)
+	ActivateRegulator(regulator *Regulator)
 }
 
-type DummyController struct{}
+type DummyRegulator struct{}
 
-func (d *DummyController) AllowAccess(req *HttpRequest) bool {
+func (d *DummyRegulator) AllowAccess(req *HttpRequest) bool {
 	return true
 }
 
-func (d *DummyController) LogAccess(req *HttpRequest) {
+func (d *DummyRegulator) LogAccess(req *HttpRequest) {
 	fmt.Printf("req = %+v\n", req)
 }
 
-type OverloadController struct{}
+type OverloadRegulator struct {
+	ActiveRegulators map[Scope]*Regulator
 
-func (d *OverloadController) AllowAccess(req *HttpRequest) bool {
-	return false
+	regulatorsMut *sync.RWMutex
 }
 
-func (d *OverloadController) LogAccess(req *HttpRequest) {
+func (d *OverloadRegulator) AllowAccess(req *HttpRequest) bool {
+	d.regulatorsMut.RLock()
+	defer d.regulatorsMut.RUnlock()
+
+	if len(d.ActiveRegulators) > 0 {
+		for _, scope := range RequestScopes(req) {
+			regulator, ok := d.ActiveRegulators[scope]
+			if !ok {
+				continue
+			}
+
+			if !regulator.Allow() {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func (d *OverloadRegulator) LogAccess(req *HttpRequest) {
+}
+
+func (d *OverloadRegulator) ActivateRegulator(regulator *Regulator) {
+	d.regulatorsMut.Lock()
+	defer d.regulatorsMut.Unlock()
+
+	d.ActiveRegulators[regulator.Scope] = regulator
+}
+
+func RequestScopes(req *HttpRequest) []Scope {
+	return []Scope{Scope{ShopId: req.ShopId}}
 }

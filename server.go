@@ -19,11 +19,11 @@ func main() {
 	// -load-control [bool]
 	// -feedback-delay [duration]
 
-	enableLoadControl := false
+	enableLoadControl := true
 
-	var loadController platform.LoadController = &platform.DummyController{}
+	var loadRegulator platform.LoadRegulator = &platform.DummyRegulator{}
 	if enableLoadControl {
-		loadController = &platform.OverloadController{}
+		loadRegulator = &platform.OverloadRegulator{}
 	}
 
 	workerGroup := &platform.WorkerGroup{
@@ -35,10 +35,10 @@ func main() {
 	defer workerGroupWg.Wait()
 
 	lb := &platform.LB{
-		WorkerGroup:    workerGroup,
-		Port:           8080,
-		LoggingDelay:   1 * time.Second,
-		LoadController: loadController,
+		WorkerGroup:   workerGroup,
+		Port:          8080,
+		LoggingDelay:  1 * time.Second,
+		LoadRegulator: loadRegulator,
 	}
 
 	configureMetrics()
