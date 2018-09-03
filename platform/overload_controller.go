@@ -1,11 +1,42 @@
 package platform
 
 import (
+	"container/ring"
+	"fmt"
 	"time"
 
 	metrics "github.com/armon/go-metrics"
 	log "github.com/sirupsen/logrus"
 )
+
+type UsageTracker struct {
+	samples *ring.Ring
+}
+
+func NewUsageTracker(limit int) *UsageTracker {
+	return &UsageTracker{
+		samples: ring.New(limit),
+	}
+}
+
+func (u *UsageTracker) Add(dur time.Duration) {
+	u.samples.Value = dur
+	u.samples = u.samples.Next()
+}
+
+func (u *UsageTracker) Sum() time.Duration {
+	var sum time.Duration = 0
+	u.samples.Do(func(dur interface{}) {
+		switch d := dur.(type) {
+		case time.Duration:
+			sum += d
+		default:
+		}
+	})
+
+	fmt.Printf("sum = %+v\n", sum)
+	return sum
+}
 
 type OverloadController struct {
 	OverloadQueueingTimeThreshold time.Duration
@@ -14,12 +45,12 @@ type OverloadController struct {
 
 	unhealthy       bool
 	unhealthyTime   time.Time
-	scopeUsage      map[Scope]time.Duration
+	scopeUsage      map[Scope]*UsageTracker
 	queueingTimeAvg time.Duration
 }
 
 func (c *OverloadController) Init() {
-	c.scopeUsage = make(map[Scope]time.Duration)
+	c.scopeUsage = make(map[Scope]*UsageTracker)
 }
 
 func (c *OverloadController) AnalyzeRequest(req *HttpRequest) {
@@ -29,7 +60,12 @@ func (c *OverloadController) AnalyzeRequest(req *HttpRequest) {
 
 func (c *OverloadController) evaluateScopeUsage(req *HttpRequest) {
 	for _, scope := range RequestScopes(req) {
-		c.scopeUsage[scope] += req.ProcessingTime
+		_, ok := c.scopeUsage[scope]
+		if !ok {
+			c.scopeUsage[scope] = NewUsageTracker(1000)
+		}
+
+		c.scopeUsage[scope].Add(req.ProcessingTime)
 	}
 }
 
@@ -63,6 +99,7 @@ func (c *OverloadController) triggerUnhealthy() {
 
 	c.unhealthy = true
 	c.unhealthyTime = time.Now()
+
 	maxScope := c.scopeWithMaxUsage()
 	log.WithField("scope", maxScope).Warn("Banning scope due to high load")
 
@@ -78,7 +115,8 @@ func (c *OverloadController) scopeWithMaxUsage() Scope {
 	var maxScope Scope
 	var maxUsage time.Duration
 
-	for scope, usage := range c.scopeUsage {
+	for scope, tracker := range c.scopeUsage {
+		usage := tracker.Sum()
 		if usage > maxUsage {
 			maxScope = scope
 			maxUsage = usage

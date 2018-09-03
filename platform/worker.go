@@ -17,9 +17,9 @@ type Work struct {
 
 // Simulates a limited capacity pool of workers
 type WorkerGroup struct {
-	NumWorkers           int
-	Handler              http.Handler
-	MaxRequestsPerSecond int
+	NumWorkers int
+	Handler    http.Handler
+	MaxRPS     int
 
 	workerQueues []WorkQueue
 }

@@ -14,6 +14,7 @@ import (
 
 func main() {
 	// args:
+	// -max-worker-rps [int]
 	// -num-workers [int]
 	// -port [int]
 	// -load-control [bool]
@@ -39,9 +40,9 @@ func main() {
 	}
 
 	workerGroup := &platform.WorkerGroup{
-		NumWorkers:           16,
-		Handler:              platform.DelayedResponder{100 * time.Millisecond},
-		MaxRequestsPerSecond: 0, // TODO: fancy capacity number
+		NumWorkers: 16,
+		Handler:    platform.DelayedResponder{100 * time.Millisecond},
+		MaxRPS:     0, // TODO: fancy capacity number
 	}
 	workerGroupWg := workerGroup.Run()
 	defer workerGroupWg.Wait()
