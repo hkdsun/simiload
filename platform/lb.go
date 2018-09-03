@@ -3,6 +3,8 @@ package platform
 import (
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,6 +29,18 @@ func (lb *LB) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	request := &HttpRequest{
 		httpReq:  r,
 		httpResp: w,
+	}
+
+	if strings.HasPrefix(r.URL.Path, "/shop") {
+		split := strings.Split(r.URL.Path, "/")
+		shopId, err := strconv.Atoi(split[len(split)-1])
+		if err != nil {
+			log.WithError(err).Error("unable to parse shopid")
+			w.WriteHeader(500)
+			return
+		}
+
+		request.ShopId = shopId
 	}
 
 	if !lb.LoadController.AllowAccess(request) {
@@ -79,4 +93,5 @@ func (lb *LB) startRequestLogger(logQueue ReqQueue) *sync.WaitGroup {
 func (lb *LB) emitRequestMetrics(req *HttpRequest) {
 	metrics.AddSample([]string{"request.processing_time"}, float32(req.ProcessingTime.Seconds()))
 	metrics.AddSample([]string{"request.queueing_time"}, float32(req.QueueingTime.Seconds()))
+	metrics.IncrCounter([]string{"request.count"}, 1)
 }

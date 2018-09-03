@@ -27,8 +27,8 @@ func main() {
 	}
 
 	workerGroup := &platform.WorkerGroup{
-		NumWorkers:           8,
-		Handler:              platform.DelayedResponder{500 * time.Millisecond},
+		NumWorkers:           16,
+		Handler:              platform.DelayedResponder{100 * time.Millisecond},
 		MaxRequestsPerSecond: 0, // TODO: fancy capacity number
 	}
 	workerGroupWg := workerGroup.Run()
