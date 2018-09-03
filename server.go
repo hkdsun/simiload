@@ -1,7 +1,12 @@
 package main
 
 import (
+	"net/http"
 	"time"
+
+	metrics "github.com/armon/go-metrics"
+	prom "github.com/armon/go-metrics/prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/hkdsun/simiload/platform"
 )
@@ -35,5 +40,12 @@ func main() {
 		LoadController: loadController,
 	}
 
+	configureMetrics()
 	lb.Run()
+}
+
+func configureMetrics() {
+	promSink := prom.NewPrometheusSink()
+	metrics.NewGlobal(metrics.DefaultConfig("sim"), lb.promSink)
+	http.ListenAndServe(":8081", prometheus.Handler())
 }
