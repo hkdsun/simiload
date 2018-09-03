@@ -15,9 +15,15 @@ type RequestHeaders struct {
 	ShopId int
 }
 
+type ResponseHeaders struct {
+	HttpStatus int
+}
+
 type HttpRequest struct {
 	httpReq  *http.Request
 	httpResp http.ResponseWriter
+
+	ResponseHeaders
 	RequestStats
 	RequestHeaders
 }

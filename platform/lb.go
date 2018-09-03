@@ -17,10 +17,10 @@ import (
 // throughput
 // TODO: rename to SimulationServer
 type LB struct {
-	WorkerGroup    *WorkerGroup
-	Port           uint
+	WorkerGroup   *WorkerGroup
+	Port          uint
 	LoadRegulator LoadRegulator
-	LoggingDelay   time.Duration
+	LoggingDelay  time.Duration
 
 	logQueue ReqQueue
 }
@@ -31,12 +31,20 @@ func (lb *LB) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httpResp: w,
 	}
 
+	defer func() {
+		go func() {
+			time.Sleep(lb.LoggingDelay)
+			lb.logQueue <- request
+		}()
+	}()
+
 	if strings.HasPrefix(r.URL.Path, "/shop") {
 		split := strings.Split(r.URL.Path, "/")
 		shopId, err := strconv.Atoi(split[len(split)-1])
 		if err != nil {
 			log.WithError(err).Error("unable to parse shopid")
 			w.WriteHeader(500)
+			request.HttpStatus = 500
 			return
 		}
 
@@ -45,17 +53,15 @@ func (lb *LB) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if !lb.LoadRegulator.AllowAccess(request) {
 		w.WriteHeader(http.StatusTooManyRequests)
+		request.HttpStatus = http.StatusTooManyRequests
 		return
 	}
 
 	lb.WorkerGroup.Serve(request)
 
-	lb.emitRequestMetrics(request)
+	request.HttpStatus = 200
 
-	go func() {
-		time.Sleep(lb.LoggingDelay)
-		lb.logQueue <- request
-	}()
+	lb.emitRequestMetrics(request)
 }
 
 func (lb *LB) Run() {
@@ -93,5 +99,5 @@ func (lb *LB) startRequestLogger(logQueue ReqQueue) *sync.WaitGroup {
 func (lb *LB) emitRequestMetrics(req *HttpRequest) {
 	metrics.AddSample([]string{"request.processing_time"}, float32(req.ProcessingTime.Seconds()))
 	metrics.AddSample([]string{"request.queueing_time"}, float32(req.QueueingTime.Seconds()))
-	metrics.IncrCounter([]string{"request.count"}, 1)
+	metrics.IncrCounterWithLabels([]string{"request.count"}, 1, []metrics.Label{{"status", string(req.HttpStatus)}})
 }

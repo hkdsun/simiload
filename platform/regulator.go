@@ -1,6 +1,8 @@
 package platform
 
-import "math/rand"
+import (
+	"math/rand"
+)
 
 type Scope struct {
 	ShopId int
@@ -12,5 +14,5 @@ type Regulator struct {
 }
 
 func (r *Regulator) Allow() bool {
-	return rand.Float32() < r.Rate
+	return rand.Float32() > r.Rate
 }

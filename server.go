@@ -23,7 +23,19 @@ func main() {
 
 	var loadRegulator platform.LoadRegulator = &platform.DummyRegulator{}
 	if enableLoadControl {
-		loadRegulator = &platform.OverloadRegulator{}
+		loadRegulator = &platform.OverloadRegulator{
+			ActiveRegulators: make(map[platform.Scope]*platform.Regulator),
+		}
+
+		loadController := platform.OverloadController{
+			OverloadQueueingTimeThreshold: 500 * time.Millisecond,
+			CircuitTimeout:                5 * time.Second,
+			Regulator:                     loadRegulator,
+		}
+
+		loadController.Init()
+
+		loadRegulator.AddAnalyzer(loadController.AnalyzeRequest)
 	}
 
 	workerGroup := &platform.WorkerGroup{

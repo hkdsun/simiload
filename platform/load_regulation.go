@@ -9,6 +9,8 @@ type LoadRegulator interface {
 	AllowAccess(req *HttpRequest) bool
 	LogAccess(req *HttpRequest)
 	ActivateRegulator(regulator *Regulator)
+	ClearRegulators()
+	AddAnalyzer(func(req *HttpRequest))
 }
 
 type DummyRegulator struct{}
@@ -21,10 +23,20 @@ func (d *DummyRegulator) LogAccess(req *HttpRequest) {
 	fmt.Printf("req = %+v\n", req)
 }
 
+func (d *DummyRegulator) ClearRegulators() {
+}
+
+func (d *DummyRegulator) ActivateRegulator(regulator *Regulator) {
+}
+
+func (d *DummyRegulator) AddAnalyzer(f func(req *HttpRequest)) {
+}
+
 type OverloadRegulator struct {
 	ActiveRegulators map[Scope]*Regulator
+	AnalyzerFunc     func(req *HttpRequest)
 
-	regulatorsMut *sync.RWMutex
+	regulatorsMut sync.RWMutex
 }
 
 func (d *OverloadRegulator) AllowAccess(req *HttpRequest) bool {
@@ -48,6 +60,9 @@ func (d *OverloadRegulator) AllowAccess(req *HttpRequest) bool {
 }
 
 func (d *OverloadRegulator) LogAccess(req *HttpRequest) {
+	if d.AnalyzerFunc != nil {
+		d.AnalyzerFunc(req)
+	}
 }
 
 func (d *OverloadRegulator) ActivateRegulator(regulator *Regulator) {
@@ -57,6 +72,17 @@ func (d *OverloadRegulator) ActivateRegulator(regulator *Regulator) {
 	d.ActiveRegulators[regulator.Scope] = regulator
 }
 
+func (d *OverloadRegulator) ClearRegulators() {
+	d.regulatorsMut.Lock()
+	defer d.regulatorsMut.Unlock()
+
+	d.ActiveRegulators = make(map[Scope]*Regulator)
+}
+
 func RequestScopes(req *HttpRequest) []Scope {
 	return []Scope{Scope{ShopId: req.ShopId}}
+}
+
+func (d *OverloadRegulator) AddAnalyzer(f func(req *HttpRequest)) {
+	d.AnalyzerFunc = f
 }
