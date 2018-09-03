@@ -7,6 +7,7 @@ import (
 	metrics "github.com/armon/go-metrics"
 	prom "github.com/armon/go-metrics/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/hkdsun/simiload/platform"
 )
@@ -45,7 +46,13 @@ func main() {
 }
 
 func configureMetrics() {
-	promSink := prom.NewPrometheusSink()
-	metrics.NewGlobal(metrics.DefaultConfig("sim"), lb.promSink)
-	http.ListenAndServe(":8081", prometheus.Handler())
+	promSink, err := prom.NewPrometheusSink()
+	if err != nil {
+		panic(err)
+	}
+
+	metrics.NewGlobal(metrics.DefaultConfig("sim"), promSink)
+
+	log.Info("Starting prometheus handler on port 8081")
+	go http.ListenAndServe(":8081", prometheus.Handler())
 }

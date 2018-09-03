@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	metrics "github.com/armon/go-metrics"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -34,6 +35,8 @@ func (lb *LB) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lb.WorkerGroup.Serve(request)
+
+	lb.emitRequestMetrics(request)
 
 	go func() {
 		time.Sleep(lb.LoggingDelay)
@@ -71,4 +74,9 @@ func (lb *LB) startRequestLogger(logQueue ReqQueue) *sync.WaitGroup {
 	}()
 
 	return wg
+}
+
+func (lb *LB) emitRequestMetrics(req *HttpRequest) {
+	metrics.AddSample([]string{"request.processing_time"}, float32(req.ProcessingTime.Seconds()))
+	metrics.AddSample([]string{"request.queueing_time"}, float32(req.QueueingTime.Seconds()))
 }
