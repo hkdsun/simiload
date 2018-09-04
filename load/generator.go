@@ -66,7 +66,7 @@ func (g *Generator) ExecuteLoadAfter(load Load, wait time.Duration) {
 }
 
 func (g *Generator) ExecuteLoad(load Load) {
-	log.WithField("scope", load.Scope).Infof("Starting load")
+	log.WithField("scope", load.Scope).WithField("qps", load.QPS).WithField("concurrency", load.Concurrency).Infof("Starting load")
 
 	path := fmt.Sprintf("%s/shop/%d", g.ServerURL, load.Scope.ShopId)
 
@@ -104,6 +104,7 @@ func (g *Generator) ExecuteLoad(load Load) {
 	}
 
 	work.Run()
+	log.WithField("scope", load.Scope).WithField("qps", load.QPS).WithField("concurrency", load.Concurrency).Infof("Finished load")
 }
 
 func (g *Generator) registerWork(work *requester.Work) {

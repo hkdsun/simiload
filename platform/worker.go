@@ -1,10 +1,13 @@
 package platform
 
 import (
-	"math/rand"
+	"context"
 	"net/http"
 	"sync"
 	"time"
+
+	metrics "github.com/armon/go-metrics"
+	"golang.org/x/time/rate"
 )
 
 type ReqQueue chan *HttpRequest
@@ -21,7 +24,7 @@ type WorkerGroup struct {
 	Handler    http.Handler
 	MaxRPS     int
 
-	workerQueues []WorkQueue
+	workQueue WorkQueue
 }
 
 func (w *WorkerGroup) Serve(req *HttpRequest) {
@@ -36,10 +39,7 @@ func (w *WorkerGroup) Serve(req *HttpRequest) {
 func (w *WorkerGroup) serveReq(req *HttpRequest) chan bool {
 	doneChan := make(chan bool)
 	work := Work{req, doneChan}
-
-	workerId := rand.Intn(w.NumWorkers)
-	w.workerQueues[workerId] <- work
-
+	w.workQueue <- work
 	return doneChan
 }
 
@@ -47,20 +47,26 @@ func (w *WorkerGroup) Run() *sync.WaitGroup {
 	wg := &sync.WaitGroup{}
 	wg.Add(w.NumWorkers)
 
-	w.workerQueues = make([]WorkQueue, w.NumWorkers)
+	w.workQueue = make(WorkQueue, 1000)
 
 	for id := 0; id < w.NumWorkers; id++ {
-		queue := make(WorkQueue, 16)
-		go w.consumeWorkQueue(queue)
-
-		w.workerQueues[id] = queue
+		go w.consumeWorkQueue(w.workQueue)
 	}
 
 	return wg
 }
 
 func (w *WorkerGroup) consumeWorkQueue(queue WorkQueue) {
+	limiter := rate.NewLimiter(rate.Limit(w.MaxRPS), 1)
+
 	for {
+		err := limiter.Wait(context.TODO())
+		if err != nil {
+			panic(err)
+		}
+
+		metrics.IncrCounter([]string{"worker.pass"}, 1)
+
 		work, ok := <-queue
 		if !ok {
 			break

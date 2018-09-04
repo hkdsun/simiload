@@ -29,7 +29,7 @@ func main() {
 		}
 
 		loadController := platform.OverloadController{
-			OverloadQueueingTimeThreshold: 500 * time.Millisecond,
+			OverloadQueueingTimeThreshold: 100 * time.Millisecond,
 			CircuitTimeout:                5 * time.Second,
 			Regulator:                     loadRegulator,
 		}
@@ -40,9 +40,9 @@ func main() {
 	}
 
 	workerGroup := &platform.WorkerGroup{
-		NumWorkers: 16,
+		NumWorkers: 10,
 		Handler:    platform.DelayedResponder{100 * time.Millisecond},
-		MaxRPS:     0, // TODO: fancy capacity number
+		MaxRPS:     10,
 	}
 	workerGroupWg := workerGroup.Run()
 	defer workerGroupWg.Wait()
@@ -50,7 +50,7 @@ func main() {
 	lb := &platform.LB{
 		WorkerGroup:   workerGroup,
 		Port:          8080,
-		LoggingDelay:  1 * time.Second,
+		LoggingDelay:  10 * time.Second,
 		LoadRegulator: loadRegulator,
 	}
 

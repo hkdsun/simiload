@@ -22,9 +22,9 @@
   },
   {
     "shop_id": 3,
-    "start_after": "5s",
-    "duration": "10s",
+    "start_after": "15s",
+    "duration": "20s",
     "concurrency": 50,
-    "qps": 10
+    "qps": 100
   }
 ]

@@ -54,7 +54,10 @@ func (lb *LB) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !lb.LoadRegulator.AllowAccess(request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 		request.HttpStatus = http.StatusTooManyRequests
+		metrics.IncrCounterWithLabels([]string{"request.edge.dropped"}, 1, []metrics.Label{{"shop_id", fmt.Sprintf("%d", request.ShopId)}})
 		return
+	} else {
+		metrics.IncrCounterWithLabels([]string{"request.edge.passed"}, 1, []metrics.Label{{"shop_id", fmt.Sprintf("%d", request.ShopId)}})
 	}
 
 	lb.WorkerGroup.Serve(request)

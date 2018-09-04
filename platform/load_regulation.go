@@ -2,6 +2,7 @@ package platform
 
 import (
 	"fmt"
+	"math/rand"
 	"sync"
 )
 
@@ -62,6 +63,10 @@ func (d *OverloadRegulator) AllowAccess(req *HttpRequest) bool {
 func (d *OverloadRegulator) LogAccess(req *HttpRequest) {
 	if d.AnalyzerFunc != nil {
 		d.AnalyzerFunc(req)
+	}
+
+	if rand.Float64() < 0.1 {
+		fmt.Printf("req = %+v\n", req.RequestStats)
 	}
 }
 

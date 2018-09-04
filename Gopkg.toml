@@ -13,3 +13,7 @@
 [[constraint]]
   name = "github.com/rakyll/hey"
   revision = "f3e8979c77c370bd8acd2dcadacd44e1260a1835"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/time"
