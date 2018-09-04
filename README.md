@@ -10,7 +10,7 @@ Simulation of an Overload Protection System
 
 - Simulation server: `localhost:8080`
 - Metrics server: `localhost:3000`
-- Load generator: `ruby generate.rb` (nicer one being developed in `generate.go`)
+- Load generator: `go run -race generate.go -config flash_sale.json "http://localhost:8080"`
 
 I used the logs for quick development and metrics for tuning:
 ![image](https://user-images.githubusercontent.com/6955854/45006491-39549f80-afc7-11e8-8225-0cadca0cee56.png)
