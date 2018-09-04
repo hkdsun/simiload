@@ -9,3 +9,7 @@
 [[constraint]]
   name = "github.com/prometheus/client_golang"
   version = "0.8.0"
+
+[[constraint]]
+  name = "github.com/rakyll/hey"
+  revision = "f3e8979c77c370bd8acd2dcadacd44e1260a1835"

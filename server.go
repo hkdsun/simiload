@@ -16,9 +16,9 @@ func main() {
 	// args:
 	// -max-worker-rps [int]
 	// -num-workers [int]
-	// -port [int]
-	// -load-control [bool]
 	// -feedback-delay [duration]
+	// -load-control [bool]
+	// -worker-response-time [duration]
 
 	enableLoadControl := true
 

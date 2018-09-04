@@ -94,6 +94,13 @@
   revision = "05ee40e3a273f7245e8777337fc7b46e533a9a92"
 
 [[projects]]
+  digest = "1:06452bd94942ab7e137dc888200d78b2986ed10b118d22b7235fdbbcd031046d"
+  name = "github.com/rakyll/hey"
+  packages = ["requester"]
+  pruneopts = "UT"
+  revision = "f3e8979c77c370bd8acd2dcadacd44e1260a1835"
+
+[[projects]]
   digest = "1:d867dfa6751c8d7a435821ad3b736310c2ed68945d05b50fb9d23aee0540c8cc"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
@@ -111,6 +118,19 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:c822b34344031b25ffa32de9384a5059abd019171d4a131437daf776bd0a3b32"
+  name = "golang.org/x/net"
+  packages = [
+    "http/httpguts",
+    "http2",
+    "http2/hpack",
+    "idna",
+  ]
+  pruneopts = "UT"
+  revision = "8a410e7b638dca158bf9e766925842f6651ff828"
+
+[[projects]]
+  branch = "master"
   digest = "1:629034aef6b53eb8ea737e6d82cb5402907e2757fbab5ddf5e74c08b4c6473af"
   name = "golang.org/x/sys"
   packages = [
@@ -120,6 +140,29 @@
   pruneopts = "UT"
   revision = "fa5fdf94c78965f1aa8423f0cc50b8b8d728b05a"
 
+[[projects]]
+  digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
+  name = "golang.org/x/text"
+  packages = [
+    "collate",
+    "collate/build",
+    "internal/colltab",
+    "internal/gen",
+    "internal/tag",
+    "internal/triegen",
+    "internal/ucd",
+    "language",
+    "secure/bidirule",
+    "transform",
+    "unicode/bidi",
+    "unicode/cldr",
+    "unicode/norm",
+    "unicode/rangetable",
+  ]
+  pruneopts = "UT"
+  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
+  version = "v0.3.0"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
@@ -127,6 +170,7 @@
     "github.com/armon/go-metrics",
     "github.com/armon/go-metrics/prometheus",
     "github.com/prometheus/client_golang/prometheus",
+    "github.com/rakyll/hey/requester",
     "github.com/sirupsen/logrus",
   ]
   solver-name = "gps-cdcl"
