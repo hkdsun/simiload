@@ -12,7 +12,7 @@ type RequestStats struct {
 }
 
 type RequestHeaders struct {
-	ShopId int
+	ShopId int `json:"shop_id"`
 }
 
 type ResponseHeaders struct {

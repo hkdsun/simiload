@@ -6,4 +6,4 @@ Simulation of an Overload Protection System
 
 - Simulation server: `localhost:8080`
 - Metrics server: `localhost:3000`
-- Load generator: `ruby generate.rb`
+- Load generator: `ruby generate.rb` (nicer one being developed in `generate.go`)
