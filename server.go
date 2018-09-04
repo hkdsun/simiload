@@ -47,7 +47,7 @@ func main() {
 	workerGroupWg := workerGroup.Run()
 	defer workerGroupWg.Wait()
 
-	lb := &platform.LB{
+	sim := &platform.Simulation{
 		WorkerGroup:   workerGroup,
 		Port:          8080,
 		LoggingDelay:  10 * time.Second,
@@ -55,7 +55,7 @@ func main() {
 	}
 
 	configureMetrics()
-	lb.Run()
+	sim.Run()
 }
 
 func configureMetrics() {

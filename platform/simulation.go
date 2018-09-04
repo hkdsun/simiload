@@ -15,8 +15,7 @@ import (
 // Simulates the edge of the platform.  It can accept tons of requests but
 // ultimately its response throughput is bottlenecked by its WorkerGroup
 // throughput
-// TODO: rename to SimulationServer
-type LB struct {
+type Simulation struct {
 	WorkerGroup   *WorkerGroup
 	Port          uint
 	LoadRegulator LoadRegulator
@@ -25,7 +24,7 @@ type LB struct {
 	logQueue ReqQueue
 }
 
-func (lb *LB) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *Simulation) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	request := &HttpRequest{
 		httpReq:  r,
 		httpResp: w,
@@ -33,8 +32,8 @@ func (lb *LB) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		go func() {
-			time.Sleep(lb.LoggingDelay)
-			lb.logQueue <- request
+			time.Sleep(s.LoggingDelay)
+			s.logQueue <- request
 		}()
 	}()
 
@@ -51,7 +50,7 @@ func (lb *LB) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		request.ShopId = shopId
 	}
 
-	if !lb.LoadRegulator.AllowAccess(request) {
+	if !s.LoadRegulator.AllowAccess(request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 		request.HttpStatus = http.StatusTooManyRequests
 		metrics.IncrCounterWithLabels([]string{"request.edge.dropped"}, 1, []metrics.Label{{"shop_id", fmt.Sprintf("%d", request.ShopId)}})
@@ -60,29 +59,29 @@ func (lb *LB) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		metrics.IncrCounterWithLabels([]string{"request.edge.passed"}, 1, []metrics.Label{{"shop_id", fmt.Sprintf("%d", request.ShopId)}})
 	}
 
-	lb.WorkerGroup.Serve(request)
+	s.WorkerGroup.Serve(request)
 
 	request.HttpStatus = 200
 
-	lb.emitRequestMetrics(request)
+	s.emitRequestMetrics(request)
 }
 
-func (lb *LB) Run() {
-	lb.logQueue = make(ReqQueue, 1000)
+func (s *Simulation) Run() {
+	s.logQueue = make(ReqQueue, 1000)
 
-	loggerWg := lb.startRequestLogger(lb.logQueue)
+	loggerWg := s.startRequestLogger(s.logQueue)
 	defer loggerWg.Wait()
 
 	s := &http.Server{
-		Addr:    fmt.Sprintf(":%d", lb.Port),
-		Handler: lb,
+		Addr:    fmt.Sprintf(":%d", s.Port),
+		Handler: s,
 	}
 
-	log.Infof("Starting HTTP server on port %d", lb.Port)
+	log.Infof("Starting HTTP server on port %d", s.Port)
 	log.Fatal(s.ListenAndServe())
 }
 
-func (lb *LB) startRequestLogger(logQueue ReqQueue) *sync.WaitGroup {
+func (s *Simulation) startRequestLogger(logQueue ReqQueue) *sync.WaitGroup {
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 
@@ -92,14 +91,14 @@ func (lb *LB) startRequestLogger(logQueue ReqQueue) *sync.WaitGroup {
 			if !ok {
 				break
 			}
-			lb.LoadRegulator.LogAccess(request)
+			s.LoadRegulator.LogAccess(request)
 		}
 	}()
 
 	return wg
 }
 
-func (lb *LB) emitRequestMetrics(req *HttpRequest) {
+func (s *Simulation) emitRequestMetrics(req *HttpRequest) {
 	metrics.AddSample([]string{"request.processing_time"}, float32(req.ProcessingTime.Seconds()))
 	metrics.AddSample([]string{"request.queueing_time"}, float32(req.QueueingTime.Seconds()))
 	metrics.IncrCounterWithLabels([]string{"request.count"}, 1, []metrics.Label{{"status", string(req.HttpStatus)}})
