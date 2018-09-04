@@ -35,9 +35,11 @@ func getLoadConfig() ([]*load.Load, error) {
 	byteValue, _ := ioutil.ReadAll(jsonFile)
 
 	var loadsConfig []struct {
-		ShopId     int    `json:"shop_id"`
-		StartAfter string `json:"start_after"`
-		Duration   string `json:"duration"`
+		ShopId      int     `json:"shop_id"`
+		StartAfter  string  `json:"start_after"`
+		Duration    string  `json:"duration"`
+		Concurrency int     `json:"concurrency"`
+		QPS         float64 `json:"qps"`
 	}
 
 	err = json.Unmarshal(byteValue, &loadsConfig)
@@ -50,18 +52,31 @@ func getLoadConfig() ([]*load.Load, error) {
 	for i, l := range loadsConfig {
 		startAfter, err := time.ParseDuration(l.StartAfter)
 		if err != nil {
+			fmt.Printf("l.startAfter = %+v\n", l.StartAfter)
+			fmt.Printf("l = %+v\n", l)
 			return nil, err
 		}
 
 		duration, err := time.ParseDuration(l.Duration)
 		if err != nil {
+			fmt.Printf("l.duration = %+v\n", l.Duration)
 			return nil, err
 		}
 
+		if l.Concurrency == 0 {
+			l.Concurrency = 4
+		}
+
+		if l.QPS == 0 {
+			l.QPS = 10
+		}
+
 		loads[i] = &load.Load{
-			Scope:      platform.Scope{l.ShopId},
-			StartAfter: startAfter,
-			Duration:   duration,
+			Scope:       platform.Scope{l.ShopId},
+			StartAfter:  startAfter,
+			Duration:    duration,
+			Concurrency: l.Concurrency,
+			QPS:         l.QPS,
 		}
 	}
 

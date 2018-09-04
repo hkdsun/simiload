@@ -1,12 +1,30 @@
 [
   {
     "shop_id": 1,
-    "start_after": "5s",
-    "duration": "10s"
+    "start_after": "0s",
+    "duration": "1m",
+    "concurrency": 4,
+    "qps": 10
   },
   {
     "shop_id": 2,
     "start_after": "0s",
-    "duration": "5s"
+    "duration": "1m",
+    "concurrency": 4,
+    "qps": 10
+  },
+  {
+    "shop_id": 3,
+    "start_after": "0s",
+    "duration": "1m",
+    "concurrency": 8,
+    "qps": 10
+  },
+  {
+    "shop_id": 3,
+    "start_after": "5s",
+    "duration": "10s",
+    "concurrency": 50,
+    "qps": 10
   }
 ]
