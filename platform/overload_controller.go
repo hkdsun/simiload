@@ -2,7 +2,6 @@ package platform
 
 import (
 	"container/ring"
-	"fmt"
 	"time"
 
 	metrics "github.com/armon/go-metrics"
@@ -34,7 +33,6 @@ func (u *UsageTracker) Sum() time.Duration {
 		}
 	})
 
-	fmt.Printf("sum = %+v\n", sum)
 	return sum
 }
 

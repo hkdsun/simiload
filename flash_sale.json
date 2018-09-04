@@ -1,0 +1,12 @@
+[
+  {
+    "shop_id": 1,
+    "start_after": "5s",
+    "duration": "10s"
+  },
+  {
+    "shop_id": 2,
+    "start_after": "0s",
+    "duration": "5s"
+  }
+]
