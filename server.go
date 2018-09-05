@@ -20,6 +20,8 @@ func main() {
 	// -load-control [bool]
 	// -worker-response-time [duration]
 
+	evaluationWindow := 10 * time.Second
+
 	enableLoadControl := true
 
 	var loadRegulator platform.LoadRegulator = &platform.DummyRegulator{}
@@ -29,12 +31,11 @@ func main() {
 		}
 
 		loadController := platform.OverloadController{
-			OverloadQueueingTimeThreshold: 100 * time.Millisecond,
+			OverloadQueueingTimeThreshold: 1000 * time.Millisecond,
 			CircuitTimeout:                5 * time.Second,
 			Regulator:                     loadRegulator,
+			StatsEvaluator:                platform.NewSlidingWindowRequestCounter(evaluationWindow),
 		}
-
-		loadController.Init()
 
 		loadRegulator.AddAnalyzer(loadController.AnalyzeRequest)
 	}
@@ -48,10 +49,10 @@ func main() {
 	defer workerGroupWg.Wait()
 
 	sim := &platform.Simulation{
-		WorkerGroup:   workerGroup,
-		Port:          8080,
-		LoggingDelay:  10 * time.Second,
-		LoadRegulator: loadRegulator,
+		WorkerGroup:          workerGroup,
+		Port:                 8080,
+		RequestSamplingDelay: evaluationWindow,
+		LoadRegulator:        loadRegulator,
 	}
 
 	configureMetrics()

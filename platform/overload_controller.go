@@ -1,54 +1,21 @@
 package platform
 
 import (
-	"container/ring"
 	"time"
 
 	metrics "github.com/armon/go-metrics"
 	log "github.com/sirupsen/logrus"
 )
 
-type UsageTracker struct {
-	samples *ring.Ring
-}
-
-func NewUsageTracker(limit int) *UsageTracker {
-	return &UsageTracker{
-		samples: ring.New(limit),
-	}
-}
-
-func (u *UsageTracker) Add(dur time.Duration) {
-	u.samples.Value = dur
-	u.samples = u.samples.Next()
-}
-
-func (u *UsageTracker) Sum() time.Duration {
-	var sum time.Duration = 0
-	u.samples.Do(func(dur interface{}) {
-		switch d := dur.(type) {
-		case time.Duration:
-			sum += d
-		default:
-		}
-	})
-
-	return sum
-}
-
 type OverloadController struct {
 	OverloadQueueingTimeThreshold time.Duration
 	CircuitTimeout                time.Duration
 	Regulator                     LoadRegulator
+	StatsEvaluator                Tracker
 
 	unhealthy       bool
 	unhealthyTime   time.Time
-	scopeUsage      map[Scope]*UsageTracker
 	queueingTimeAvg time.Duration
-}
-
-func (c *OverloadController) Init() {
-	c.scopeUsage = make(map[Scope]*UsageTracker)
 }
 
 func (c *OverloadController) AnalyzeRequest(req *HttpRequest) {
@@ -58,12 +25,7 @@ func (c *OverloadController) AnalyzeRequest(req *HttpRequest) {
 
 func (c *OverloadController) evaluateScopeUsage(req *HttpRequest) {
 	for _, scope := range RequestScopes(req) {
-		_, ok := c.scopeUsage[scope]
-		if !ok {
-			c.scopeUsage[scope] = NewUsageTracker(1000)
-		}
-
-		c.scopeUsage[scope].Add(req.ProcessingTime)
+		c.StatsEvaluator.Add(scope, req.ProcessingTime)
 	}
 }
 
@@ -98,7 +60,7 @@ func (c *OverloadController) triggerUnhealthy() {
 	c.unhealthy = true
 	c.unhealthyTime = time.Now()
 
-	maxScope := c.scopeWithMaxUsage()
+	maxScope := c.StatsEvaluator.Max(1)[0]
 	log.WithField("scope", maxScope).Warn("Banning scope due to high load")
 
 	regulator := &Regulator{
@@ -107,19 +69,4 @@ func (c *OverloadController) triggerUnhealthy() {
 	}
 
 	c.Regulator.ActivateRegulator(regulator)
-}
-
-func (c *OverloadController) scopeWithMaxUsage() Scope {
-	var maxScope Scope
-	var maxUsage time.Duration
-
-	for scope, tracker := range c.scopeUsage {
-		usage := tracker.Sum()
-		if usage > maxUsage {
-			maxScope = scope
-			maxUsage = usage
-		}
-	}
-
-	return maxScope
 }

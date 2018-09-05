@@ -16,10 +16,10 @@ import (
 // ultimately its response throughput is bottlenecked by its WorkerGroup
 // throughput
 type Simulation struct {
-	WorkerGroup   *WorkerGroup
-	Port          uint
-	LoadRegulator LoadRegulator
-	LoggingDelay  time.Duration
+	WorkerGroup          *WorkerGroup
+	Port                 uint
+	LoadRegulator        LoadRegulator
+	RequestSamplingDelay time.Duration
 
 	logQueue ReqQueue
 }
@@ -32,7 +32,7 @@ func (s *Simulation) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		go func() {
-			time.Sleep(s.LoggingDelay)
+			time.Sleep(s.RequestSamplingDelay)
 			s.logQueue <- request
 		}()
 	}()
@@ -72,13 +72,13 @@ func (s *Simulation) Run() {
 	loggerWg := s.startRequestLogger(s.logQueue)
 	defer loggerWg.Wait()
 
-	s := &http.Server{
+	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.Port),
 		Handler: s,
 	}
 
 	log.Infof("Starting HTTP server on port %d", s.Port)
-	log.Fatal(s.ListenAndServe())
+	log.Fatal(server.ListenAndServe())
 }
 
 func (s *Simulation) startRequestLogger(logQueue ReqQueue) *sync.WaitGroup {
