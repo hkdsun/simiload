@@ -1,7 +1,6 @@
 package platform
 
 import (
-	"fmt"
 	"net/http"
 	"sync"
 )
@@ -21,7 +20,7 @@ func (d *DummyRegulator) AllowAccess(req *HttpRequest) bool {
 }
 
 func (d *DummyRegulator) LogAccess(req *HttpRequest) {
-	fmt.Printf("req = %+v\n", req)
+	// fmt.Printf("req = %+v\n", req)
 }
 
 func (d *DummyRegulator) ClearRegulators() {

@@ -22,7 +22,7 @@ func main() {
 
 	evaluationWindow := 10 * time.Second
 
-	enableLoadControl := true
+	enableLoadControl := false
 
 	var loadRegulator platform.LoadRegulator = &platform.DummyRegulator{}
 	if enableLoadControl {
@@ -31,17 +31,17 @@ func main() {
 		}
 
 		loadController := platform.OverloadController{
-			OverloadQueueingTimeThreshold: 1000 * time.Millisecond,
-			CircuitTimeout:                5 * time.Second,
+			OverloadQueueingTimeThreshold: 50 * time.Millisecond,
+			CircuitTimeout:                30 * time.Second,
 			Regulator:                     loadRegulator,
-			StatsEvaluator:                platform.NewSlidingWindowRequestCounter(evaluationWindow),
+			StatsEvaluator:                platform.NewSlidingWindowRequestCounter(60 * time.Second),
 		}
 
 		loadRegulator.AddAnalyzer(loadController.AnalyzeRequest)
 	}
 
 	workerGroup := &platform.WorkerGroup{
-		NumWorkers: 10,
+		NumWorkers: 50,
 		Handler:    platform.DelayedResponder{100 * time.Millisecond},
 		MaxRPS:     10,
 	}

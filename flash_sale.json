@@ -2,43 +2,43 @@
   {
     "shop_id": 1,
     "start_after": "0s",
-    "duration": "1m10s",
+    "duration": "3m",
     "concurrency": 5,
     "qps": 10
   },
   {
     "shop_id": 2,
     "start_after": "0s",
-    "duration": "1m10s",
+    "duration": "3m",
     "concurrency": 5,
     "qps": 10
   },
   {
     "shop_id": 3,
     "start_after": "0s",
-    "duration": "1m10s",
+    "duration": "3m",
     "concurrency": 5,
     "qps": 10
   },
   {
     "shop_id": 4,
     "start_after": "0s",
-    "duration": "1m10s",
+    "duration": "3m",
     "concurrency": 5,
     "qps": 10
   },
   {
     "shop_id": 5,
     "start_after": "0s",
-    "duration": "1m10s",
+    "duration": "3m",
     "concurrency": 5,
     "qps": 10
   },
   {
     "shop_id": 5,
-    "start_after": "30s",
-    "duration": "40s",
-    "concurrency": 40,
-    "qps": 10
+    "start_after": "45s",
+    "duration": "60s",
+    "concurrency": 200,
+    "qps": 900
   }
 ]
