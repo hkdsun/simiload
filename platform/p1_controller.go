@@ -8,10 +8,10 @@ import (
 )
 
 type P1Controller struct {
-	OverloadQueueingTimeThreshold time.Duration
-	CircuitTimeout                time.Duration
-	Regulator                     LoadRegulator
-	StatsEvaluator                Tracker
+	QueueingTimeThreshold time.Duration
+	CircuitTimeout        time.Duration
+	AccessController      AccessController
+	StatsEvaluator        Tracker
 
 	unhealthy       bool
 	unhealthyTime   time.Time
@@ -35,7 +35,7 @@ func (c *P1Controller) evaluatePlatformHealth(req *HttpRequest) {
 
 	metrics.SetGauge([]string{"overload.queueing_time_avg"}, float32(c.queueingTimeAvg.Seconds()))
 
-	if c.queueingTimeAvg > c.OverloadQueueingTimeThreshold {
+	if c.queueingTimeAvg > c.QueueingTimeThreshold {
 		c.triggerUnhealthy()
 	} else {
 		if c.unhealthy && time.Since(c.unhealthyTime) > c.CircuitTimeout {
@@ -47,7 +47,7 @@ func (c *P1Controller) evaluatePlatformHealth(req *HttpRequest) {
 func (c *P1Controller) triggerHealthy() {
 	c.unhealthy = false
 	c.unhealthyTime = time.Time{}
-	c.Regulator.ClearRegulators()
+	c.AccessController.ClearRegulators()
 	log.Info("Recovered from high load")
 }
 
@@ -68,5 +68,5 @@ func (c *P1Controller) triggerUnhealthy() {
 		Rate:  1.0,
 	}
 
-	c.Regulator.ActivateRegulator(regulator)
+	c.AccessController.ActivateRegulator(regulator)
 }

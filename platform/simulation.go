@@ -18,7 +18,7 @@ import (
 type Simulation struct {
 	WorkerGroup          *WorkerGroup
 	Port                 uint
-	LoadRegulator        LoadRegulator
+	AccessController     AccessController
 	RequestSamplingDelay time.Duration
 
 	logQueue ReqQueue
@@ -50,7 +50,7 @@ func (s *Simulation) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		request.ShopId = shopId
 	}
 
-	if !s.LoadRegulator.AllowAccess(request) {
+	if !s.AccessController.AllowAccess(request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 		request.HttpStatus = http.StatusTooManyRequests
 		metrics.IncrCounterWithLabels([]string{"request.edge.dropped"}, 1, []metrics.Label{{"shop_id", fmt.Sprintf("%d", request.ShopId)}})
@@ -91,7 +91,7 @@ func (s *Simulation) startRequestLogger(logQueue ReqQueue) *sync.WaitGroup {
 			if !ok {
 				break
 			}
-			s.LoadRegulator.LogAccess(request)
+			s.AccessController.LogAccess(request)
 		}
 	}()
 

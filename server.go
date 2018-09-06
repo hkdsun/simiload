@@ -24,29 +24,29 @@ func main() {
 
 	// loadControlStrategy := "none"
 	loadControlStrategy := "procrustean"
-	// loadControlStrategy := "overload"
+	// loadControlStrategy := "p1"
 
-	var loadRegulator platform.LoadRegulator
+	var accessController platform.AccessController
 
 	if loadControlStrategy == "none" {
-		loadRegulator = &platform.DummyRegulator{}
-	} else if loadControlStrategy == "overload" {
-		loadRegulator = &platform.OverloadRegulator{
+		accessController = &platform.DummyRegulator{}
+	} else if loadControlStrategy == "p1" {
+		accessController = &platform.OverloadRegulator{
 			ActiveRegulators: make(map[platform.Scope]*platform.Regulator),
 			Analyzer: &platform.P1Controller{
-				OverloadQueueingTimeThreshold: 50 * time.Millisecond,
-				CircuitTimeout:                30 * time.Second,
-				Regulator:                     loadRegulator,
-				StatsEvaluator:                platform.NewSlidingWindowRequestCounter(60 * time.Second),
+				QueueingTimeThreshold: 50 * time.Millisecond,
+				CircuitTimeout:        30 * time.Second,
+				AccessController:      accessController,
+				StatsEvaluator:        platform.NewSlidingWindowRequestCounter(60 * time.Second),
 			},
 		}
 	} else if loadControlStrategy == "procrustean" {
-		loadRegulator = &platform.OverloadRegulator{
+		accessController = &platform.OverloadRegulator{
 			ActiveRegulators: make(map[platform.Scope]*platform.Regulator),
 			Analyzer: &platform.ProShed{
-				SoftLimit: 30, // number of requests in queue
-				HardLimit: 100,
-				Regulator: loadRegulator,
+				SoftLimit:        30, // number of requests in queue
+				HardLimit:        100,
+				AccessController: accessController,
 			},
 		}
 	}
@@ -63,7 +63,7 @@ func main() {
 		WorkerGroup:          workerGroup,
 		Port:                 8080,
 		RequestSamplingDelay: evaluationWindow,
-		LoadRegulator:        loadRegulator,
+		AccessController:     accessController,
 	}
 
 	configureMetrics()

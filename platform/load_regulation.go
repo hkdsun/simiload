@@ -9,7 +9,7 @@ type LoadAnalyzer interface {
 	AnalyzeRequest(req *HttpRequest)
 }
 
-type LoadRegulator interface {
+type AccessController interface {
 	AllowAccess(req *HttpRequest) bool
 	LogAccess(req *HttpRequest)
 	ActivateRegulator(regulator *Regulator)
