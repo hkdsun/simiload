@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"sync"
 	"time"
 
 	metrics "github.com/armon/go-metrics"
@@ -20,7 +21,7 @@ func main() {
 	// -load-control [bool]
 	// -worker-response-time [duration]
 
-	evaluationWindow := 10 * time.Second
+	// evaluationWindow := 10 * time.Second
 
 	// loadControlStrategy := "none"
 	loadControlStrategy := "procrustean"
@@ -31,24 +32,28 @@ func main() {
 	if loadControlStrategy == "none" {
 		accessController = &platform.DummyController{}
 	} else if loadControlStrategy == "p1" {
-		accessController = &platform.ActiveController{
-			ActiveThrottlers: make(map[platform.Scope]*platform.Throttler),
-			Analyzer: &platform.P1Controller{
-				QueueingTimeThreshold: 50 * time.Millisecond,
-				CircuitTimeout:        30 * time.Second,
-				AccessController:      accessController,
-				StatsEvaluator:        platform.NewSlidingWindowRequestCounter(60 * time.Second),
-			},
+		controller := &platform.ActiveController{}
+		analyzer := &platform.P1Controller{
+			QueueingTimeThreshold: 50 * time.Millisecond,
+			CircuitTimeout:        30 * time.Second,
+			AccessController:      accessController,
+			StatsEvaluator:        platform.NewSlidingWindowRequestCounter(60 * time.Second),
+			ActiveThrottlers:      make(map[platform.Scope]*platform.Throttler),
 		}
+		controller.Analyzer = analyzer
+		accessController = controller
 	} else if loadControlStrategy == "procrustean" {
-		accessController = &platform.ActiveController{
-			ActiveThrottlers: make(map[platform.Scope]*platform.Throttler),
-			Analyzer: &platform.ProShed{
-				SoftLimit:        30, // number of requests in queue
-				HardLimit:        100,
-				AccessController: accessController,
-			},
+		controller := &platform.ActiveController{}
+		analyzer := &platform.ProShed{
+			SoftLimit:        1, // number of requests in queue
+			HardLimit:        10,
+			Steps:            4,
+			AccessController: accessController,
+			StatsEvaluator:   platform.NewSlidingWindowRequestCounter(60 * time.Second),
+			QueueMut:         &sync.Mutex{},
 		}
+		controller.Analyzer = analyzer
+		accessController = controller
 	}
 
 	workerGroup := &platform.WorkerGroup{
@@ -62,7 +67,7 @@ func main() {
 	sim := &platform.Simulation{
 		WorkerGroup:          workerGroup,
 		Port:                 8080,
-		RequestSamplingDelay: evaluationWindow,
+		RequestSamplingDelay: 0 * time.Millisecond,
 		AccessController:     accessController,
 	}
 

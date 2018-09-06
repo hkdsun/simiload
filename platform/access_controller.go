@@ -1,19 +1,18 @@
 package platform
 
 import (
+	"math/rand"
 	"net/http"
-	"sync"
 )
 
 type LoadAnalyzer interface {
 	AnalyzeRequest(req *HttpRequest)
+	AllowAccess(req *HttpRequest) bool
 }
 
 type AccessController interface {
 	AllowAccess(req *HttpRequest) bool
 	LogAccess(req *HttpRequest)
-	ActivateThrottler(throttler *Throttler)
-	ClearThrottlers()
 }
 
 type DummyController struct{}
@@ -23,62 +22,21 @@ func (d *DummyController) AllowAccess(req *HttpRequest) bool {
 }
 
 func (d *DummyController) LogAccess(req *HttpRequest) {
-	// fmt.Printf("req = %+v\n", req)
-}
-
-func (d *DummyController) ClearThrottlers() {
-}
-
-func (d *DummyController) ActivateThrottler(throttler *Throttler) {
+	if rand.Float64() < 1.0 {
+		// fmt.Printf("req = %+v\n", req.RequestStats)
+	}
 }
 
 type ActiveController struct {
-	ActiveThrottlers map[Scope]*Throttler
-	Analyzer         LoadAnalyzer
-
-	throttlersMut sync.RWMutex
+	Analyzer LoadAnalyzer
 }
 
 func (d *ActiveController) AllowAccess(req *HttpRequest) bool {
-	d.throttlersMut.RLock()
-	defer d.throttlersMut.RUnlock()
-
-	if len(d.ActiveThrottlers) > 0 {
-		for _, scope := range RequestScopes(req) {
-			throttler, ok := d.ActiveThrottlers[scope]
-			if !ok {
-				continue
-			}
-
-			if !throttler.Allow() {
-				return false
-			}
-		}
-	}
-
-	return true
+	return d.Analyzer.AllowAccess(req)
 }
 
 func (d *ActiveController) LogAccess(req *HttpRequest) {
 	if d.Analyzer != nil && req.HttpStatus != http.StatusTooManyRequests {
 		d.Analyzer.AnalyzeRequest(req)
 	}
-}
-
-func (d *ActiveController) ActivateThrottler(throttler *Throttler) {
-	d.throttlersMut.Lock()
-	defer d.throttlersMut.Unlock()
-
-	d.ActiveThrottlers[throttler.Scope] = throttler
-}
-
-func (d *ActiveController) ClearThrottlers() {
-	d.throttlersMut.Lock()
-	defer d.throttlersMut.Unlock()
-
-	d.ActiveThrottlers = make(map[Scope]*Throttler)
-}
-
-func RequestScopes(req *HttpRequest) []Scope {
-	return []Scope{Scope{ShopId: req.ShopId}}
 }
