@@ -5,12 +5,15 @@ import (
 	"sync"
 )
 
+type LoadAnalyzer interface {
+	AnalyzeRequest(req *HttpRequest)
+}
+
 type LoadRegulator interface {
 	AllowAccess(req *HttpRequest) bool
 	LogAccess(req *HttpRequest)
 	ActivateRegulator(regulator *Regulator)
 	ClearRegulators()
-	AddAnalyzer(func(req *HttpRequest))
 }
 
 type DummyRegulator struct{}
@@ -29,12 +32,9 @@ func (d *DummyRegulator) ClearRegulators() {
 func (d *DummyRegulator) ActivateRegulator(regulator *Regulator) {
 }
 
-func (d *DummyRegulator) AddAnalyzer(f func(req *HttpRequest)) {
-}
-
 type OverloadRegulator struct {
 	ActiveRegulators map[Scope]*Regulator
-	AnalyzerFunc     func(req *HttpRequest)
+	Analyzer         LoadAnalyzer
 
 	regulatorsMut sync.RWMutex
 }
@@ -60,8 +60,8 @@ func (d *OverloadRegulator) AllowAccess(req *HttpRequest) bool {
 }
 
 func (d *OverloadRegulator) LogAccess(req *HttpRequest) {
-	if d.AnalyzerFunc != nil && req.HttpStatus != http.StatusTooManyRequests {
-		d.AnalyzerFunc(req)
+	if d.Analyzer != nil && req.HttpStatus != http.StatusTooManyRequests {
+		d.Analyzer.AnalyzeRequest(req)
 	}
 }
 
@@ -81,8 +81,4 @@ func (d *OverloadRegulator) ClearRegulators() {
 
 func RequestScopes(req *HttpRequest) []Scope {
 	return []Scope{Scope{ShopId: req.ShopId}}
-}
-
-func (d *OverloadRegulator) AddAnalyzer(f func(req *HttpRequest)) {
-	d.AnalyzerFunc = f
 }

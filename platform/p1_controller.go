@@ -7,7 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type OverloadController struct {
+type P1Controller struct {
 	OverloadQueueingTimeThreshold time.Duration
 	CircuitTimeout                time.Duration
 	Regulator                     LoadRegulator
@@ -18,18 +18,18 @@ type OverloadController struct {
 	queueingTimeAvg time.Duration
 }
 
-func (c *OverloadController) AnalyzeRequest(req *HttpRequest) {
+func (c *P1Controller) AnalyzeRequest(req *HttpRequest) {
 	c.evaluateScopeUsage(req)
 	c.evaluatePlatformHealth(req)
 }
 
-func (c *OverloadController) evaluateScopeUsage(req *HttpRequest) {
+func (c *P1Controller) evaluateScopeUsage(req *HttpRequest) {
 	for _, scope := range RequestScopes(req) {
 		c.StatsEvaluator.Add(scope, req.ProcessingTime)
 	}
 }
 
-func (c *OverloadController) evaluatePlatformHealth(req *HttpRequest) {
+func (c *P1Controller) evaluatePlatformHealth(req *HttpRequest) {
 	c.queueingTimeAvg -= c.queueingTimeAvg / 100
 	c.queueingTimeAvg += req.QueueingTime / 30
 
@@ -44,14 +44,14 @@ func (c *OverloadController) evaluatePlatformHealth(req *HttpRequest) {
 	}
 }
 
-func (c *OverloadController) triggerHealthy() {
+func (c *P1Controller) triggerHealthy() {
 	c.unhealthy = false
 	c.unhealthyTime = time.Time{}
 	c.Regulator.ClearRegulators()
 	log.Info("Recovered from high load")
 }
 
-func (c *OverloadController) triggerUnhealthy() {
+func (c *P1Controller) triggerUnhealthy() {
 	// TODO: use events?
 	if c.unhealthy {
 		return

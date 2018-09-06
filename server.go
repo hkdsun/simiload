@@ -22,22 +22,33 @@ func main() {
 
 	evaluationWindow := 10 * time.Second
 
-	enableLoadControl := false
+	// loadControlStrategy := "none"
+	loadControlStrategy := "procrustean"
+	// loadControlStrategy := "overload"
 
-	var loadRegulator platform.LoadRegulator = &platform.DummyRegulator{}
-	if enableLoadControl {
+	var loadRegulator platform.LoadRegulator
+
+	if loadControlStrategy == "none" {
+		loadRegulator = &platform.DummyRegulator{}
+	} else if loadControlStrategy == "overload" {
 		loadRegulator = &platform.OverloadRegulator{
 			ActiveRegulators: make(map[platform.Scope]*platform.Regulator),
+			Analyzer: &platform.P1Controller{
+				OverloadQueueingTimeThreshold: 50 * time.Millisecond,
+				CircuitTimeout:                30 * time.Second,
+				Regulator:                     loadRegulator,
+				StatsEvaluator:                platform.NewSlidingWindowRequestCounter(60 * time.Second),
+			},
 		}
-
-		loadController := platform.OverloadController{
-			OverloadQueueingTimeThreshold: 50 * time.Millisecond,
-			CircuitTimeout:                30 * time.Second,
-			Regulator:                     loadRegulator,
-			StatsEvaluator:                platform.NewSlidingWindowRequestCounter(60 * time.Second),
+	} else if loadControlStrategy == "procrustean" {
+		loadRegulator = &platform.OverloadRegulator{
+			ActiveRegulators: make(map[platform.Scope]*platform.Regulator),
+			Analyzer: &platform.ProShed{
+				SoftLimit: 30, // number of requests in queue
+				HardLimit: 100,
+				Regulator: loadRegulator,
+			},
 		}
-
-		loadRegulator.AddAnalyzer(loadController.AnalyzeRequest)
 	}
 
 	workerGroup := &platform.WorkerGroup{

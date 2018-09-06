@@ -34,6 +34,7 @@ func (w *WorkerGroup) Serve(req *HttpRequest) {
 
 	req.TotalTime = time.Now().Sub(startQueueing)
 	req.QueueingTime = req.TotalTime - req.ProcessingTime
+	req.QueueLength = len(w.workQueue)
 }
 
 func (w *WorkerGroup) serveReq(req *HttpRequest) chan bool {
