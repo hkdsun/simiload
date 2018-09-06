@@ -47,7 +47,7 @@ func (c *P1Controller) evaluatePlatformHealth(req *HttpRequest) {
 func (c *P1Controller) triggerHealthy() {
 	c.unhealthy = false
 	c.unhealthyTime = time.Time{}
-	c.AccessController.ClearRegulators()
+	c.AccessController.ClearThrottlers()
 	log.Info("Recovered from high load")
 }
 
@@ -63,10 +63,10 @@ func (c *P1Controller) triggerUnhealthy() {
 	maxScope := c.StatsEvaluator.Max(1)[0]
 	log.WithField("scope", maxScope).Warn("Banning scope due to high load")
 
-	regulator := &Regulator{
+	throttler := &Throttler{
 		Scope: maxScope,
 		Rate:  1.0,
 	}
 
-	c.AccessController.ActivateRegulator(regulator)
+	c.AccessController.ActivateThrottler(throttler)
 }

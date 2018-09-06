@@ -29,10 +29,10 @@ func main() {
 	var accessController platform.AccessController
 
 	if loadControlStrategy == "none" {
-		accessController = &platform.DummyRegulator{}
+		accessController = &platform.DummyController{}
 	} else if loadControlStrategy == "p1" {
-		accessController = &platform.OverloadRegulator{
-			ActiveRegulators: make(map[platform.Scope]*platform.Regulator),
+		accessController = &platform.ActiveController{
+			ActiveThrottlers: make(map[platform.Scope]*platform.Throttler),
 			Analyzer: &platform.P1Controller{
 				QueueingTimeThreshold: 50 * time.Millisecond,
 				CircuitTimeout:        30 * time.Second,
@@ -41,8 +41,8 @@ func main() {
 			},
 		}
 	} else if loadControlStrategy == "procrustean" {
-		accessController = &platform.OverloadRegulator{
-			ActiveRegulators: make(map[platform.Scope]*platform.Regulator),
+		accessController = &platform.ActiveController{
+			ActiveThrottlers: make(map[platform.Scope]*platform.Throttler),
 			Analyzer: &platform.ProShed{
 				SoftLimit:        30, // number of requests in queue
 				HardLimit:        100,

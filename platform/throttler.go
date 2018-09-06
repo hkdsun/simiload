@@ -8,11 +8,11 @@ type Scope struct {
 	ShopId int
 }
 
-type Regulator struct {
+type Throttler struct {
 	Scope Scope
 	Rate  float32
 }
 
-func (r *Regulator) Allow() bool {
+func (r *Throttler) Allow() bool {
 	return rand.Float32() > r.Rate
 }
