@@ -99,7 +99,7 @@ func (s *Simulation) startRequestLogger(logQueue ReqQueue) *sync.WaitGroup {
 }
 
 func (s *Simulation) emitRequestMetrics(req *HttpRequest) {
-	metrics.AddSample([]string{"request.processing_time"}, float32(req.ProcessingTime.Seconds()))
-	metrics.AddSample([]string{"request.queueing_time"}, float32(req.QueueingTime.Seconds()))
+	metrics.AddSample([]string{"request.processing_time"}, float32(req.ProcessingTime.Seconds()*1000))
+	metrics.AddSample([]string{"request.queueing_time"}, float32(req.QueueingTime.Seconds()*1000))
 	metrics.IncrCounterWithLabels([]string{"request.count"}, 1, []metrics.Label{{"status", string(req.HttpStatus)}})
 }

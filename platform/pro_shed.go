@@ -1,8 +1,10 @@
 package platform
 
 import (
-	"fmt"
 	"sync"
+	"time"
+
+	metrics "github.com/armon/go-metrics"
 )
 
 // def addRequest(self, r):
@@ -34,32 +36,34 @@ import (
 //       self.rejected += 1
 
 type ProShed struct {
-	SoftLimit        int
-	HardLimit        int
+	SoftLimit        float64
+	HardLimit        float64
 	Steps            int
 	AccessController AccessController
+	LoadStrategy     string
 
-	queueLength int
-	QueueMut    *sync.Mutex
-	reqModulus  int
+	lastUpdate     time.Time
+	queueingLoad   float64 // in milliseconds
+	numWorkingLoad float64
+	LoadMut        *sync.Mutex
+	reqModulus     int
 }
 
 func (p *ProShed) AnalyzeRequest(req *HttpRequest) {
-	p.updateQueueLength(req.QueueLength)
+	p.updateLoad(req.QueueingTime.Seconds()*1000, req.NumWorking)
 }
 
 func (p *ProShed) AllowAccess(req *HttpRequest) bool {
-	p.QueueMut.Lock()
-	defer p.QueueMut.Unlock()
+	if time.Now().Sub(p.lastUpdate) >= 1*time.Second {
+		return true
+	}
 
-	divisor := (float64(p.HardLimit) - float64(p.SoftLimit)) / float64(p.Steps)
+	divisor := (p.HardLimit - p.SoftLimit) / float64(p.Steps)
 
 	p.reqModulus = (p.reqModulus + 1) % p.Steps
 
-	threshold := int((float64(p.HardLimit) - float64(p.queueLength)) / divisor)
-
-	fmt.Printf("p.queueLength = %+v\n", p.queueLength)
-	fmt.Printf("threshold = %+v\n", threshold)
+	load := p.getLoad()
+	threshold := int((float64(p.HardLimit) - load) / divisor)
 
 	if p.reqModulus >= threshold {
 		return false
@@ -68,8 +72,41 @@ func (p *ProShed) AllowAccess(req *HttpRequest) bool {
 	return true
 }
 
-func (p *ProShed) updateQueueLength(queueLength int) {
-	p.QueueMut.Lock()
-	defer p.QueueMut.Unlock()
-	p.queueLength = queueLength
+func (p *ProShed) updateLoad(queueingTime float64, numWorking uint32) {
+	if time.Now().Sub(p.lastUpdate) <= 100*time.Millisecond {
+		return
+	}
+
+	p.LoadMut.Lock()
+	defer p.LoadMut.Unlock()
+
+	p.queueingLoad -= p.queueingLoad / 30
+	p.queueingLoad += float64(queueingTime) / 30
+
+	p.numWorkingLoad -= p.numWorkingLoad / 30
+	p.numWorkingLoad += float64(numWorking) / 30
+
+	p.lastUpdate = time.Now()
+	switch p.LoadStrategy {
+	case "queueing":
+		metrics.SetGauge([]string{"measured_load"}, float32(p.queueingLoad))
+	case "num_working":
+		metrics.SetGauge([]string{"measured_load"}, float32(p.numWorkingLoad))
+	default:
+		panic("no such laod strategy")
+	}
+}
+
+func (p *ProShed) getLoad() float64 {
+	p.LoadMut.Lock()
+	defer p.LoadMut.Unlock()
+
+	switch p.LoadStrategy {
+	case "queueing":
+		return p.queueingLoad
+	case "num_working":
+		return p.numWorkingLoad
+	default:
+		panic("no such laod strategy")
+	}
 }

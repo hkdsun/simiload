@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -13,22 +14,31 @@ type P1Controller struct {
 	CircuitTimeout        time.Duration
 	AccessController      AccessController
 	StatsEvaluator        Tracker
+	ThrottleStrategy      string
 
 	unhealthy       bool
 	unhealthyTime   time.Time
 	queueingTimeAvg time.Duration
 
 	ActiveThrottlers map[Scope]*Throttler
-	throttlersMut    sync.RWMutex
+	GlobalThrottler  *Throttler
+
+	throttlersMut sync.RWMutex
 }
 
 func (c *P1Controller) AnalyzeRequest(req *HttpRequest) {
+	// TODO: instrument load
 	c.evaluateScopeUsage(req)
 	c.evaluatePlatformHealth(req)
 }
 func (c *P1Controller) AllowAccess(req *HttpRequest) bool {
+	// TODO: instrument access
 	c.throttlersMut.RLock()
 	defer c.throttlersMut.RUnlock()
+
+	if c.GlobalThrottler != nil {
+		return c.GlobalThrottler.Allow()
+	}
 
 	if len(c.ActiveThrottlers) > 0 {
 		for _, scope := range RequestScopes(req) {
@@ -58,6 +68,7 @@ func (c *P1Controller) clearThrottlers() {
 	defer c.throttlersMut.Unlock()
 
 	c.ActiveThrottlers = make(map[Scope]*Throttler)
+	c.GlobalThrottler = nil
 }
 
 func RequestScopes(req *HttpRequest) []Scope {
@@ -72,9 +83,9 @@ func (c *P1Controller) evaluateScopeUsage(req *HttpRequest) {
 
 func (c *P1Controller) evaluatePlatformHealth(req *HttpRequest) {
 	c.queueingTimeAvg -= c.queueingTimeAvg / 100
-	c.queueingTimeAvg += req.QueueingTime / 30
+	c.queueingTimeAvg += req.QueueingTime / 100
 
-	metrics.SetGauge([]string{"overload.queueing_time_avg"}, float32(c.queueingTimeAvg.Seconds()))
+	metrics.SetGauge([]string{"measured_load"}, float32(c.queueingTimeAvg.Seconds()))
 
 	if c.queueingTimeAvg > c.QueueingTimeThreshold {
 		c.triggerUnhealthy()
@@ -101,6 +112,19 @@ func (c *P1Controller) triggerUnhealthy() {
 	c.unhealthy = true
 	c.unhealthyTime = time.Now()
 
+	switch c.ThrottleStrategy {
+	case "global":
+		c.GlobalThrottler = &Throttler{
+			Rate: 0.5,
+		}
+	case "top_hitter":
+		c.activateMaxScopeThrottler()
+	default:
+		panic(fmt.Sprintf("throttler %s not recognized", c.ThrottleStrategy))
+	}
+}
+
+func (c *P1Controller) activateMaxScopeThrottler() {
 	maxScope := c.StatsEvaluator.Max(1)[0]
 	log.WithField("scope", maxScope).Warn("Banning scope due to high load")
 

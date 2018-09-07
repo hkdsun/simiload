@@ -24,7 +24,8 @@ func main() {
 	// evaluationWindow := 10 * time.Second
 
 	// loadControlStrategy := "none"
-	loadControlStrategy := "procrustean"
+	// loadControlStrategy := "pro_queueing"
+	loadControlStrategy := "pro_num_workers"
 	// loadControlStrategy := "p1"
 
 	var accessController platform.AccessController
@@ -39,27 +40,41 @@ func main() {
 			AccessController:      accessController,
 			StatsEvaluator:        platform.NewSlidingWindowRequestCounter(60 * time.Second),
 			ActiveThrottlers:      make(map[platform.Scope]*platform.Throttler),
+			ThrottleStrategy:      "global",
+			// ThrottleStrategy:      "top_hitter",
 		}
 		controller.Analyzer = analyzer
 		accessController = controller
-	} else if loadControlStrategy == "procrustean" {
+	} else if loadControlStrategy == "pro_queueing" {
 		controller := &platform.ActiveController{}
 		analyzer := &platform.ProShed{
-			SoftLimit:        1, // number of requests in queue
-			HardLimit:        10,
-			Steps:            4,
+			SoftLimit:        5, // queueing time
+			HardLimit:        20,
+			Steps:            10,
 			AccessController: accessController,
-			StatsEvaluator:   platform.NewSlidingWindowRequestCounter(60 * time.Second),
-			QueueMut:         &sync.Mutex{},
+			LoadMut:          &sync.Mutex{},
+			LoadStrategy:     "queueing",
+		}
+		controller.Analyzer = analyzer
+		accessController = controller
+	} else if loadControlStrategy == "pro_num_workers" {
+		controller := &platform.ActiveController{}
+		analyzer := &platform.ProShed{
+			SoftLimit:        180, // worker utilization
+			HardLimit:        200,
+			Steps:            10,
+			AccessController: accessController,
+			LoadMut:          &sync.Mutex{},
+			LoadStrategy:     "num_working",
 		}
 		controller.Analyzer = analyzer
 		accessController = controller
 	}
 
 	workerGroup := &platform.WorkerGroup{
-		NumWorkers: 50,
+		NumWorkers: 200,
 		Handler:    platform.DelayedResponder{100 * time.Millisecond},
-		MaxRPS:     10,
+		MaxRPS:     20,
 	}
 	workerGroupWg := workerGroup.Run()
 	defer workerGroupWg.Wait()
@@ -81,7 +96,9 @@ func configureMetrics() {
 		panic(err)
 	}
 
-	metrics.NewGlobal(metrics.DefaultConfig("sim"), promSink)
+	config := metrics.DefaultConfig("sim")
+	config.EnableHostname = false
+	metrics.NewGlobal(config, promSink)
 
 	log.Info("Starting prometheus handler on port 8081")
 	go http.ListenAndServe(":8081", prometheus.Handler())

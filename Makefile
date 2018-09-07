@@ -6,5 +6,8 @@ linux_server:
 builddocker: linux_server
 		docker build -t hkdsun/simiload .
 
+metrics:
+	docker-compose -f docker-compose-metrics.yml up
+
 run: builddocker
 	docker-compose up

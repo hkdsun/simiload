@@ -10,6 +10,7 @@ type RequestStats struct {
 	ProcessingTime time.Duration
 	TotalTime      time.Duration
 	QueueLength    int
+	NumWorking     uint32
 }
 
 type RequestHeaders struct {
