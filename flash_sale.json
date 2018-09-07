@@ -3,28 +3,28 @@
     "shop_id": 1,
     "start_after": "0s",
     "duration": "4m",
-    "concurrency": 20,
+    "concurrency": 10,
     "qps": 10
   },
   {
     "shop_id": 2,
     "start_after": "0s",
     "duration": "4m",
-    "concurrency": 20,
+    "concurrency": 10,
     "qps": 10
   },
   {
     "shop_id": 3,
     "start_after": "0s",
     "duration": "4m",
-    "concurrency": 20,
+    "concurrency": 10,
     "qps": 10
   },
   {
     "shop_id": 4,
     "start_after": "0s",
     "duration": "4m",
-    "concurrency": 20,
+    "concurrency": 10,
     "qps": 10
   },
   {

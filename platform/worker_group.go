@@ -63,6 +63,7 @@ func (w *WorkerGroup) Run() *sync.WaitGroup {
 		for {
 			<-time.After(1 * time.Second)
 			metrics.SetGauge([]string{"workers.online"}, float32(w.NumWorkers))
+			metrics.SetGauge([]string{"workers.utilized"}, float32(atomic.LoadUint32(&w.NumWorking)))
 		}
 	}()
 

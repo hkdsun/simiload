@@ -24,8 +24,8 @@ func main() {
 	// evaluationWindow := 10 * time.Second
 
 	// loadControlStrategy := "none"
-	// loadControlStrategy := "pro_queueing"
-	loadControlStrategy := "pro_num_workers"
+	loadControlStrategy := "pro_queueing"
+	// loadControlStrategy := "pro_num_workers"
 	// loadControlStrategy := "p1"
 
 	var accessController platform.AccessController
@@ -48,8 +48,8 @@ func main() {
 	} else if loadControlStrategy == "pro_queueing" {
 		controller := &platform.ActiveController{}
 		analyzer := &platform.ProShed{
-			SoftLimit:        5, // queueing time
-			HardLimit:        20,
+			SoftLimit:        10, // queueing time
+			HardLimit:        50,
 			Steps:            10,
 			AccessController: accessController,
 			LoadMut:          &sync.Mutex{},
@@ -60,8 +60,8 @@ func main() {
 	} else if loadControlStrategy == "pro_num_workers" {
 		controller := &platform.ActiveController{}
 		analyzer := &platform.ProShed{
-			SoftLimit:        180, // worker utilization
-			HardLimit:        200,
+			SoftLimit:        90, // worker utilization
+			HardLimit:        100,
 			Steps:            10,
 			AccessController: accessController,
 			LoadMut:          &sync.Mutex{},
@@ -72,7 +72,7 @@ func main() {
 	}
 
 	workerGroup := &platform.WorkerGroup{
-		NumWorkers: 200,
+		NumWorkers: 100,
 		Handler:    platform.DelayedResponder{100 * time.Millisecond},
 		MaxRPS:     20,
 	}
