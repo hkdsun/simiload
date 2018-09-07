@@ -1,6 +1,6 @@
 # Simiload
 
-Simulation of an Overload Protection System
+Simulation of different load shedding strategies. The high level architecture is as follows:
 
 ![image](https://user-images.githubusercontent.com/6955854/45006533-66a14d80-afc7-11e8-95a8-88c9c13546d9.png)
 
