@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/hkdsun/simiload/load"
-	"github.com/hkdsun/simiload/platform"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -35,7 +34,7 @@ func getLoadConfig() ([]*load.Load, error) {
 	byteValue, _ := ioutil.ReadAll(jsonFile)
 
 	var loadsConfig []struct {
-		ShopId      int     `json:"shop_id"`
+		Path        string  `json:"path"`
 		StartAfter  string  `json:"start_after"`
 		Duration    string  `json:"duration"`
 		Concurrency int     `json:"concurrency"`
@@ -72,7 +71,7 @@ func getLoadConfig() ([]*load.Load, error) {
 		}
 
 		loads[i] = &load.Load{
-			Scope:       platform.Scope{l.ShopId},
+			Path:        l.Path,
 			StartAfter:  startAfter,
 			Duration:    duration,
 			Concurrency: l.Concurrency,

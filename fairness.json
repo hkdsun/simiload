@@ -1,0 +1,37 @@
+[
+  {
+    "path": "shop/1/a",
+    "start_after": "0s",
+    "duration": "4m",
+    "concurrency": 20,
+    "qps": 100
+  },
+  {
+    "path": "shop/2/b",
+    "start_after": "0s",
+    "duration": "4m",
+    "concurrency": 80,
+    "qps": 100
+  },
+  {
+    "path": "shop/3/c",
+    "start_after": "0s",
+    "duration": "4m",
+    "concurrency": 40,
+    "qps": 100
+  },
+  {
+    "path": "shop/4/d",
+    "start_after": "0s",
+    "duration": "3m",
+    "concurrency": 60,
+    "qps": 100
+  },
+  {
+    "path": "shop/5/e",
+    "start_after": "0s",
+    "duration": "2m",
+    "concurrency": 30,
+    "qps": 100
+  }
+]

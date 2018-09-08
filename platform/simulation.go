@@ -39,7 +39,10 @@ func (s *Simulation) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if strings.HasPrefix(r.URL.Path, "/shop") {
 		split := strings.Split(r.URL.Path, "/")
-		shopId, err := strconv.Atoi(split[len(split)-1])
+
+		request.ClientId = split[len(split)-1]
+
+		shopId, err := strconv.Atoi(split[len(split)-2])
 		if err != nil {
 			log.WithError(err).Error("unable to parse shopid")
 			w.WriteHeader(500)
@@ -53,10 +56,18 @@ func (s *Simulation) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !s.AccessController.AllowAccess(request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 		request.HttpStatus = http.StatusTooManyRequests
-		metrics.IncrCounterWithLabels([]string{"request.edge.dropped"}, 1, []metrics.Label{{"shop_id", fmt.Sprintf("%d", request.ShopId)}})
+		labels := []metrics.Label{
+			{"shop_id", fmt.Sprintf("%d", request.ShopId)},
+			{"client_id", request.ClientId},
+		}
+		metrics.IncrCounterWithLabels([]string{"request.edge.dropped"}, 1, labels)
 		return
 	} else {
-		metrics.IncrCounterWithLabels([]string{"request.edge.passed"}, 1, []metrics.Label{{"shop_id", fmt.Sprintf("%d", request.ShopId)}})
+		labels := []metrics.Label{
+			{"shop_id", fmt.Sprintf("%d", request.ShopId)},
+			{"client_id", request.ClientId},
+		}
+		metrics.IncrCounterWithLabels([]string{"request.edge.passed"}, 1, labels)
 	}
 
 	s.WorkerGroup.Serve(request)

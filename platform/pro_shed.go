@@ -38,7 +38,6 @@ import (
 type ProShed struct {
 	SoftLimit        float64
 	HardLimit        float64
-	Steps            int
 	AccessController AccessController
 	LoadStrategy     string
 
@@ -47,6 +46,8 @@ type ProShed struct {
 	numWorkingLoad float64
 	LoadMut        *sync.Mutex
 	reqModulus     int
+
+	throttler *ProThrottler
 }
 
 func (p *ProShed) AnalyzeRequest(req *HttpRequest) {
@@ -54,22 +55,17 @@ func (p *ProShed) AnalyzeRequest(req *HttpRequest) {
 }
 
 func (p *ProShed) AllowAccess(req *HttpRequest) bool {
+	if p.throttler == nil {
+		p.throttler = &ProThrottler{
+			Steps: 10,
+		}
+	}
+
 	if time.Now().Sub(p.lastUpdate) >= 1*time.Second {
 		return true
 	}
 
-	divisor := (p.HardLimit - p.SoftLimit) / float64(p.Steps)
-
-	p.reqModulus = (p.reqModulus + 1) % p.Steps
-
-	load := p.getLoad()
-	threshold := int((float64(p.HardLimit) - load) / divisor)
-
-	if p.reqModulus >= threshold {
-		return false
-	}
-
-	return true
+	return p.throttler.Allow(p.SoftLimit, p.HardLimit, p.getLoad())
 }
 
 func (p *ProShed) updateLoad(queueingTime float64, numWorking uint32) {

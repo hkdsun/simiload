@@ -24,8 +24,8 @@ func main() {
 	// evaluationWindow := 10 * time.Second
 
 	// loadControlStrategy := "none"
-	loadControlStrategy := "pro_queueing"
-	// loadControlStrategy := "pro_num_workers"
+	// loadControlStrategy := "pro_queueing"
+	loadControlStrategy := "pro_num_workers"
 	// loadControlStrategy := "p1"
 
 	var accessController platform.AccessController
@@ -50,7 +50,6 @@ func main() {
 		analyzer := &platform.ProShed{
 			SoftLimit:        10, // queueing time
 			HardLimit:        50,
-			Steps:            10,
 			AccessController: accessController,
 			LoadMut:          &sync.Mutex{},
 			LoadStrategy:     "queueing",
@@ -62,7 +61,6 @@ func main() {
 		analyzer := &platform.ProShed{
 			SoftLimit:        90, // worker utilization
 			HardLimit:        100,
-			Steps:            10,
 			AccessController: accessController,
 			LoadMut:          &sync.Mutex{},
 			LoadStrategy:     "num_working",

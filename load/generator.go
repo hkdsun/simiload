@@ -11,16 +11,15 @@ import (
 	"time"
 
 	"github.com/containous/traefik/log"
-	"github.com/hkdsun/simiload/platform"
 	"github.com/rakyll/hey/requester"
 )
 
 type Load struct {
-	Scope       platform.Scope
 	StartAfter  time.Duration
 	Duration    time.Duration
 	Concurrency int
 	QPS         float64
+	Path        string
 }
 
 type Generator struct {
@@ -66,11 +65,11 @@ func (g *Generator) ExecuteLoadAfter(load Load, wait time.Duration) {
 }
 
 func (g *Generator) ExecuteLoad(load Load) {
-	log.WithField("scope", load.Scope).WithField("qps", load.QPS).WithField("concurrency", load.Concurrency).Infof("Starting load")
+	log.WithField("path", load.Path).WithField("qps", load.QPS).WithField("concurrency", load.Concurrency).Infof("Starting load")
 
-	path := fmt.Sprintf("%s/shop/%d", g.ServerURL, load.Scope.ShopId)
+	uri := fmt.Sprintf("%s/%s", g.ServerURL, load.Path)
 
-	req, err := http.NewRequest("GET", path, nil)
+	req, err := http.NewRequest("GET", uri, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -104,7 +103,7 @@ func (g *Generator) ExecuteLoad(load Load) {
 	}
 
 	work.Run()
-	log.WithField("scope", load.Scope).WithField("qps", load.QPS).WithField("concurrency", load.Concurrency).Infof("Finished load")
+	log.WithField("path", load.Path).WithField("qps", load.QPS).WithField("concurrency", load.Concurrency).Infof("Finished load")
 }
 
 func (g *Generator) registerWork(work *requester.Work) {

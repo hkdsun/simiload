@@ -1,34 +1,34 @@
 [
   {
-    "shop_id": 1,
+    "path": "shop/1/a",
     "start_after": "0s",
     "duration": "4m",
     "concurrency": 10,
     "qps": 10
   },
   {
-    "shop_id": 2,
+    "path": "shop/2/b",
     "start_after": "0s",
     "duration": "4m",
     "concurrency": 10,
     "qps": 10
   },
   {
-    "shop_id": 3,
+    "path": "shop/3/c",
     "start_after": "0s",
     "duration": "4m",
     "concurrency": 10,
     "qps": 10
   },
   {
-    "shop_id": 4,
+    "path": "shop/4/d",
     "start_after": "0s",
     "duration": "4m",
     "concurrency": 10,
     "qps": 10
   },
   {
-    "shop_id": 5,
+    "path": "shop/5/e",
     "start_after": "1m",
     "duration": "2m",
     "concurrency": 200,
