@@ -1,24 +1,24 @@
-class Test
-  def initialize(soft, hard, steps, silent: false)
-    @mod = 0
-    @soft = soft
-    @hard = hard
-    @steps = steps
-    @silent = silent
+class FixedSizeSlidingCounter < Array
+  def initialize(max_size)
+    @max_size = max_size
+    @counts = Hash.new(0)
   end
 
-  def allow(load_val)
-    divisor = (@hard - @soft) / @steps
+  def increment(key)
+    if size >= @max_size
+      @counts[shift] -= 1
+    end
 
-    @mod = (@mod + 1) % @steps
+    push(key)
+    @counts[key] += 1
+  end
 
-    threshold = (@hard - load_val) / divisor
-
-    pass = threshold > @mod
-
-    puts "load=#{load_val}\t\tthreshold=#{threshold}\t@mod=#{@mod}\tpass=#{pass}" unless @silent
-
-    pass
+  def ratios
+    ratios = {}
+    @counts.each do |priority, count|
+      ratios[priority] = count.to_f/self.size
+    end
+    ratios
   end
 end
 
@@ -29,15 +29,18 @@ class Throttler
   end
 
   def allow(drop_ratio)
-    pass_ratio = 1 - drop_ratio
-
-    return false if pass_ratio <= 0
-    return true if pass_ratio >= 1
-
+    return false if drop_ratio >= 1
+    return true if drop_ratio <= 0
+    #
+    # the @mod variable slides over the following structure rejecting/accepting requests
+    #
+    # 0                                             steps
+    # -------------------------------------------------
+    # |R|R|R|R|R|R|R|R|R|R|R|R|R|R|A|A|A|A|A|A|A|A|A|A|
+    # -------------------------------------------------
+    #                             ^thresh
     @mod = (@mod + 1) % @steps
-
-    threshold = @steps - pass_ratio * @steps
-
+    threshold = @steps - drop_ratio * @steps
     threshold > @mod
   end
 end
@@ -59,6 +62,7 @@ class Controller
     @drop_ratios = {}
     @scope_priorities = {} # { scope => priority }
     @throttlers = {} # { priority => throttler }
+    @frequency_counter = FixedSizeSlidingCounter.new(1000)
 
     PRIORITIES.each do |priority|
       @throttlers[priority] = Throttler.new(100)
@@ -66,6 +70,7 @@ class Controller
   end
 
   def allow(req_scope, load_val)
+    update_priority_frequency(req_scope)
     update_drop_ratios(load_val)
     drop_request?(req_scope)
   end
@@ -81,104 +86,90 @@ class Controller
     @throttlers[req_priority]&.allow(@drop_ratios[req_priority] || 0)
   end
 
+  def update_priority_frequency(req_scope)
+    req_priority = @scope_priorities[req_scope] || :default
+    @frequency_counter.increment(req_priority)
+  end
+
   def update_drop_ratios(load_val)
     # drop rate is the following ratio:
     #
     # num_rejected / num_requests
     #
-    #
     # for example, a ratio of 1/4 means for every 4 requests drop 1 one of them
     # in other words, drop 25% of requests
+
+    # calculate the target global drop rate based on a linear scale:
     #
-    # calculate the target _global_ drop rate:
+    #     soft                   hard
+    #  <---|-----------|-----------|--->
+    #      0%         50%         100%
+    #
     length = (@hard_limit - @soft_limit)
-    target_drop_rate = (@hard_limit - load_val) / length
-    target_drop_rate = 1 - target_drop_rate
+    target_drop_rate = 1 - ((@hard_limit - load_val) / length)
 
-    num_throttlers = @throttlers.size
+    # given the new load value and the observed priority frequencies, work
+    # backwards from the desired global drop rate to a set of ratios for active
+    # throttlers
+    target_sum = target_drop_rate
+    PRIORITIES.each do |priority|
+      # we've already reached the target rate, pass all other priorities
+      if target_sum == 0
+        @drop_ratios[priority] = 0
+        next
+      end
 
-    # given the new load value, work backwards from the desired global drop
-    # rate to a set of ratios for active throttlers
-    #
-    # i.e. calculate the sum of the distribution using its expected value and
-    # then re-distribute the sum, biasing towards the lowest priority
-    target_sum = target_drop_rate * num_throttlers
-    priority = 0
+      # expected percentage of total load that can be shed in this priority bucket
+      priority_frequency = @frequency_counter.ratios[priority] || 0
 
-    while priority < num_throttlers && target_sum > 0
-      if target_sum <= 1
-        # last iteration of the loop. sum of all the drop ratios equals the
-        # initial value of target_sum
-        @drop_ratios[PRIORITIES[priority]] = target_sum
-        target_sum -= 1
+      if target_sum <= priority_frequency
+        # calculate how much of the last priority bucket must be shed
+        @drop_ratios[priority] = target_sum.to_f / priority_frequency
+        target_sum -= target_sum
       else
         # must reject 100% of requests from the current priority in order to
         # protect the next priority. we essentially downgrade priority at this
         # point
-        @drop_ratios[PRIORITIES[priority]] = 1
-        target_sum -= 1
-        priority += 1
+        @drop_ratios[priority] = 1
+        target_sum -= priority_frequency
       end
     end
   end
 end
 
-allowed = {true => 0, false => 0}
-t = Test.new(80.0, 100.0, 5.0)
-(0..1000).each do |i|
-  allowed[t.allow(i.to_f)] += 1
-end
-puts "allowed=#{allowed}"
+load_range = (70..110)
+soft = 80.0
+hard = 100.0
+total_requests_per_load = 5000
 
-
-
-(60..110).each do |load_|
-  allowed = {true => 0, false => 0}
-
-  t = Test.new(80.0, 100.0, 100.0, silent: true)
-  (0..200).each do |i|
-    allowed[t.allow(load_)] += 1
-  end
-
-  sum = allowed[true] + allowed[false]
-  ratio = allowed[true].to_f / sum.to_f
-  puts "load=#{load_} allowed=#{allowed} ratio=#{ratio}"
-end
-
-
-(80..93).each do |load_|
-  scopes = [:b, :b, :b, :b, :c, :d, :e]
+load_range.each do |current_load|
+  scopes = [:a, :a, :a, :a, :a, :a, :b, :b, :b, :b, :c, :d, :e]
 
   allowed = {}
   scopes.each do |scope|
     allowed[scope] = {true => 0, false => 0}
   end
 
-  soft = 80.0
-  hard = 100.0
-
   t = Controller.new(soft, hard)
   t.add_scope(:a, priority: :offender)
 
   passed_requests = 0
-  total_requests = 5000
 
-  (0...total_requests).each do |i|
+  (0...total_requests_per_load).each do |i|
     scope = scopes.sample
-    pass = t.allow(scope, load_)
+    pass = t.allow(scope, current_load)
     allowed[scope][pass] += 1
     passed_requests += 1 if pass
   end
 
   length = (hard - soft)
-  target_ratio = (hard - load_) / length
+  target_ratio = (hard - current_load) / length
 
-  puts "passed_requests=#{passed_requests} pass_ratio=#{passed_requests.to_f/total_requests} target_ratio=#{target_ratio} allowed=#{allowed}"
-
+  puts "passed_requests=#{passed_requests} pass_ratio=#{passed_requests.to_f/total_requests_per_load} target_ratio=#{target_ratio} allowed=#{allowed}"
   scopes.uniq.each do |scope|
     sum = allowed[scope][true] + allowed[scope][false]
     ratio = allowed[scope][true].to_f / sum.to_f
-    puts "scope=#{scope} load=#{load_} pass_ratio=#{ratio.round(2)}\t\t"
+    puts "scope=#{scope} load=#{current_load} pass_ratio=#{ratio.round(2)}\t\t"
   end
   puts
 end
