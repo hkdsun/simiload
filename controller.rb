@@ -22,21 +22,23 @@ class Test
   end
 end
 
-class TestT
+class Throttler
   def initialize(steps)
     @steps = steps
     @mod = 0
   end
 
   def allow(drop_ratio)
-    return true if drop_ratio == 0
-    return false if drop_ratio >= 1
+    pass_ratio = 1 - drop_ratio
+
+    return false if pass_ratio <= 0
+    return true if pass_ratio >= 1
 
     @mod = (@mod + 1) % @steps
 
-    threshold = @steps - drop_ratio * @steps
+    threshold = @steps - pass_ratio * @steps
 
-    threshold > @modulus[req_scope]
+    threshold > @mod
   end
 end
 
@@ -52,8 +54,8 @@ class Controller
   Scope = Struct.new(:pod_id)
 
   def initialize(soft, hard)
-    @soft_limit = soft_limit
-    @hard_limit = hard_limit
+    @soft_limit = soft
+    @hard_limit = hard
     @drop_ratios = {}
     @scope_priorities = {} # { scope => priority }
     @throttlers = {} # { priority => throttler }
@@ -76,7 +78,7 @@ class Controller
 
   def drop_request?(req_scope)
     req_priority = @scope_priorities[req_scope] || :default
-    @throttlers[req_priority]&.allow(req_scope)
+    @throttlers[req_priority]&.allow(@drop_ratios[req_priority] || 0)
   end
 
   def update_drop_ratios(load_val)
@@ -107,12 +109,13 @@ class Controller
       if target_sum <= 1
         # last iteration of the loop. sum of all the drop ratios equals the
         # initial value of target_sum
-        @drop_ratios[priority] = target_sum
+        @drop_ratios[PRIORITIES[priority]] = target_sum
+        target_sum -= 1
       else
         # must reject 100% of requests from the current priority in order to
         # protect the next priority. we essentially downgrade priority at this
         # point
-        @drop_ratios[priority] = 1
+        @drop_ratios[PRIORITIES[priority]] = 1
         target_sum -= 1
         priority += 1
       end
@@ -143,22 +146,22 @@ puts "allowed=#{allowed}"
 end
 
 
-(80..100).each do |load_|
-  scopes = [:a, :a, :a, :a, :b, :c, :d, :e]
+(80..93).each do |load_|
+  scopes = [:b, :b, :b, :b, :c, :d, :e]
 
   allowed = {}
   scopes.each do |scope|
     allowed[scope] = {true => 0, false => 0}
   end
 
-  passed_requests = 0
-  total_requests = 5000
-
   soft = 80.0
   hard = 100.0
 
-  t = TestT.new(soft, hard)
-  t.add_offender(:a)
+  t = Controller.new(soft, hard)
+  t.add_scope(:a, priority: :offender)
+
+  passed_requests = 0
+  total_requests = 5000
 
   (0...total_requests).each do |i|
     scope = scopes.sample

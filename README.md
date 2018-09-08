@@ -13,7 +13,7 @@ Simulation of different load shedding strategies. The high level architecture is
 - `make metrics` starts a metrics collection cluster, the Grafana cluster is at: `localhost:3000`
 
 **Load Generation:**
-- To generate some load use: `go run -race generate.go -config flash_sale.json "http://localhost:8080"`
+- To generate some load use: `go run generate.go -config flash_sale.json "http://localhost:8080"`
 
 **Dashboard:**
 - Configure a Grafana data source of type `prometheus`. The API URL is `http://simiload_prometheus_1:9090`
