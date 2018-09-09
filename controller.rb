@@ -28,17 +28,19 @@ class Throttler
     @mod = 0
   end
 
+  # drop_ratio determines what percentile of requests should be dropped
+  #
+  # the @modulus counter slides over the following structure rejecting/accepting
+  # requests accordingly
+  #
+  #   0                                               steps
+  #   -----------------------------------------------------
+  #   |R|R|R|R|R|R|R|R|R|R|R|R|R|R|A|A|A|A|A|A|A|A|A|A|A|A|
+  #   -----------------------------------------------------
+  #                               ^thresh(drop_ratio)
   def allow(drop_ratio)
     return false if drop_ratio >= 1
     return true if drop_ratio <= 0
-    #
-    # the @mod variable slides over the following structure rejecting/accepting requests
-    #
-    #   0                                             steps
-    #   -------------------------------------------------
-    #   |R|R|R|R|R|R|R|R|R|R|R|R|R|R|A|A|A|A|A|A|A|A|A|A|
-    #   -------------------------------------------------
-    #                               ^thresh
     @mod = (@mod + 1) % @steps
     threshold = @steps - drop_ratio * @steps
     threshold > @mod
