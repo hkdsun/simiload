@@ -7,10 +7,10 @@ Simulation of different load shedding strategies. The high level architecture is
 # Running
 
 **Simulation server:**
-- `make` compiles `server.go` and runs a docker-compose cluster with the simulation server at: `localhost:8080`
+- `make` compiles `server.go` and runs a container, within the metrics cluster network, with the simulation server at: `localhost:8080`
 
 **Metrics cluster:**
-- `make metrics` starts a metrics collection cluster, the Grafana cluster is at: `localhost:3000`
+- `make metrics` starts a metrics collection cluster, the Grafana frontend is at: `localhost:3000`
 
 **Load Generation:**
 - To generate some load use: `go run generate.go -config flash_sale.json "http://localhost:8080"`
